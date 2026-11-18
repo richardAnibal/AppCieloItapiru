@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestión de la posada</title>
+<style>
+:root{
+  --bg:#eef5fb; --card:#fff; --ink:#1c2430; --mut:#667085; --line:#d9e6f2;
+  --pri:#2b7ec4; --pri-ink:#fff; --danger:#b42318; --warn:#b54708; --ok:#067647;
+  --s-libre:#d6f2e3; --s-ocupada:#fbdcd9; --s-limpieza:#fdeec2; --s-reservada:#dbe7fb; --s-en_casa:#fbdcd9; --s-finalizada:#e5e7eb;
+  --bar:#63b0ea;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f141b; --card:#171e27; --ink:#e7ebf0; --mut:#9aa5b3; --line:#2a3340;
+    --pri:#6cb6ee; --pri-ink:#071a2b; --danger:#f97066; --warn:#fdb022; --ok:#47cd89;
+    --s-libre:#10382a; --s-ocupada:#48201c; --s-limpieza:#47360a; --s-reservada:#1b2c4d; --s-en_casa:#48201c; --s-finalizada:#2b323c;
+    --bar:#6cb6ee;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h2{margin:0 0 12px;font-size:20px}
+h3{margin:0;font-size:16px}
+a{color:var(--pri)}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+input[type=checkbox]{width:auto}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--pri);outline-offset:1px}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 14px;cursor:pointer;min-height:38px}
+.btn:hover{border-color:var(--pri)}
+.btn.primary{background:var(--pri);color:var(--pri-ink);border-color:var(--pri);font-weight:600}
+.btn.danger{color:var(--danger)}
+.btn.danger-fill{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.sm{padding:4px 10px;min-height:30px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row.end{justify-content:flex-end}.row.between{justify-content:space-between}
+.grow{flex:1}
+.mut{color:var(--mut)}
+.empty{color:var(--mut);padding:16px;text-align:center}
+
+/* layout */
+.shell{display:grid;grid-template-columns:1fr;min-height:100vh}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.top b{font-size:16px}
+.nav{display:flex;gap:4px;overflow-x:auto;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--line)}
+.nav a{white-space:nowrap;padding:8px 12px;border-radius:8px;color:var(--ink);text-decoration:none}
+.nav a.on{background:var(--pri);color:var(--pri-ink);font-weight:600}
+main{padding:16px;max-width:1200px;width:100%;margin:0 auto;min-width:0}
+@media(min-width:900px){
+  .shell{grid-template-columns:210px 1fr;grid-template-rows:auto 1fr}
+  .top{grid-column:1/3}
+  .nav{flex-direction:column;border-right:1px solid var(--line);border-bottom:0;overflow:visible;padding:12px}
+}
+
+/* tablas */
+.tablewrap{overflow-x:auto}
+table.t{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}
+.t th,.t td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.t th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--mut);white-space:nowrap}
+.t td.num,.t th.num{text-align:right;font-variant-numeric:tabular-nums}
+.t tr.tot td{font-weight:700;background:var(--bg)}
+@media(max-width:700px){
+  .t.stack thead{display:none}
+  .t.stack tr{display:block;border-bottom:6px solid var(--bg);padding:4px 0}
+  .t.stack td{display:flex;justify-content:space-between;align-items:center;gap:12px;border:0;padding:4px 10px;text-align:right}
+  .t.stack td::before{content:attr(data-label);color:var(--mut);font-size:12px;text-align:left}
+}
+.search{max-width:320px}
+.toolbar input[type=date],.toolbar input[type=month]{width:auto}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+
+/* etiquetas */
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:var(--line);white-space:nowrap}
+.badge.ok{background:var(--s-libre);color:var(--ok)}
+.badge.warn{background:var(--s-limpieza);color:var(--warn)}
+.badge.err{background:var(--s-ocupada);color:var(--danger)}
+.st-libre{background:var(--s-libre)}.st-ocupada{background:var(--s-ocupada)}.st-limpieza{background:var(--s-limpieza)}
+.low{color:var(--danger);font-weight:600}
+
+/* formularios */
+.form{display:grid;gap:12px}
+.fld{display:grid;gap:4px}
+.fld>span{font-size:13px;color:var(--mut)}
+.fld.chk{display:flex;align-items:center;gap:8px}
+.fld small{color:var(--mut)}
+.inline{display:flex;align-items:center;gap:6px}
+.inline input,.inline select{width:auto}
+.sel-sm{padding:4px 8px;width:auto}
+
+/* modal */
+dialog.modal{border:1px solid var(--line);border-radius:12px;padding:0;background:var(--card);color:var(--ink);width:min(680px,calc(100vw - 24px));max-height:92vh}
+dialog.modal::backdrop{background:rgba(0,0,0,.45)}
+.mhead{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card)}
+.mhead .x{border:0;background:none;font-size:24px;cursor:pointer;line-height:1}
+.mbody{padding:16px;display:grid;gap:12px}
+
+/* toasts */
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:grid;gap:8px;z-index:50;width:min(480px,calc(100vw - 32px))}
+.toast{padding:10px 14px;border-radius:8px;background:var(--ink);color:var(--bg);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.toast.err{background:var(--danger);color:#fff}
+
+/* login */
+.login{max-width:360px;margin:12vh auto;padding:24px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.login h2{margin:0}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-logo{height:34px;width:auto;max-width:80px;object-fit:contain;flex:none}
+.brand-logo.big{height:60px;max-width:110px}
+.login-brand{justify-content:center;margin-bottom:18px}
+
+/* calendario */
+.cal{border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);font-size:12px;width:max-content;min-width:100%}
+.cal th,.cal td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);height:38px;min-width:42px;text-align:center;padding:0}
+.cal th{font-weight:500;color:var(--mut);height:44px}
+.cal th.today{background:var(--pri);color:var(--pri-ink)}
+.cal th.wk,.cal td.wk{background-image:linear-gradient(rgba(128,128,128,.07),rgba(128,128,128,.07))}
+.cal td.room,.cal th.room{position:sticky;left:0;background:var(--card);min-width:96px;text-align:left;padding:0 8px;z-index:1;font-size:13px}
+.cal td.free{cursor:pointer}.cal td.free:hover{background:var(--s-libre)}
+.cal td.res{cursor:pointer;padding:0 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:0;font-weight:600;border-radius:6px;border:2px solid var(--card)}
+.cal td.res.st-reservada{background:var(--s-reservada)}
+.cal td.res.st-en_casa{background:var(--s-en_casa)}
+.cal td.res.st-finalizada{background:var(--s-finalizada)}
+
+/* panel */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.kpi small{color:var(--mut);display:block}
+.kpi b{font-size:20px;font-variant-numeric:tabular-nums}
+.kpi.neg b{color:var(--danger)}
+.barcell{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.bar{display:inline-block;height:8px;border-radius:0 4px 4px 0;background:var(--bar);min-width:1px}
+.sec{margin:20px 0 8px;font-size:16px}
+
+/* ventas */
+.pos{display:grid;gap:16px}
+@media(min-width:900px){.pos{grid-template-columns:1fr 360px;align-items:start}}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:5px 12px;cursor:pointer}
+.chip.on{background:var(--pri);color:var(--pri-ink);border-color:var(--pri)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px}
+.tile{display:grid;gap:2px;text-align:left;padding:10px;border:1px solid var(--line);background:var(--card);border-radius:10px;cursor:pointer;min-height:76px}
+.tile:hover:not([disabled]){border-color:var(--pri)}
+.tile[disabled]{opacity:.45;cursor:not-allowed}
+.tile small{color:var(--mut)}
+.cart{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
+.cartline{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.cartline .num{text-align:right}
+.cartline .price-in{width:120px;text-align:right;padding:4px 8px}
+.pos>*,.cart>*,.cartline>*{min-width:0}
+.qty{display:flex;align-items:center;gap:4px}
+.total{font-size:22px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.ctl-client{display:flex;gap:6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+
+/* impresión */
+#printRoot{display:none}
+@media print{
+  body>*:not(#printRoot){display:none!important}
+  #printRoot{display:block;color:#000;background:#fff;padding:12px}
+  #printRoot table{width:100%;border-collapse:collapse}
+  #printRoot th,#printRoot td{border-bottom:1px solid #999;padding:4px 6px;text-align:left;color:#000}
+  #printRoot .num{text-align:right}
+  #printRoot h1,#printRoot h2{margin:0 0 6px}
+  #printRoot .ptotal{font-size:18px;font-weight:700;text-align:right}
+  #printRoot .pnote{font-size:11px;margin-top:20px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toasts"></div>
+<div id="printRoot"></div>
+<datalist id="dl_clients"></datalist>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// Configuración de la app. Completá los dos datos de Supabase:
+// Supabase → Project Settings → API → "Project URL" y "anon public" key.
+// (La anon key es pública por diseño: la seguridad la dan las reglas de la base de datos.)
+window.APP_CONFIG = {
+  SUPABASE_URL: 'https://cgyikhodkpczduoiyabp.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNneWlraG9ka3BjemR1b2l5YWJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5NDI0MjMsImV4cCI6MjExMDUxODQyM30.V72YAnI2ieEOCKUf-Acc0mBvvMHp8PldkHnhWDAY2fk',
+
+  NOMBRE: 'Posada Cielo Itapirú',   // aparece en la barra superior y en los comprobantes
+  LOGO: 'logo.png',                 // archivo del logo en la misma carpeta (png, jpg, svg o webp). Dejalo vacío '' para no mostrar logo
+  MONEDA: 'PYG',                    // PYG (guaraníes), USD, ARS, BRL...
+  LOCALE: 'es-PY',
+  DOC_TITULO: 'Comprobante',        // título de lo que se imprime al facturar
+  DOC_NOTA: 'Comprobante interno. No reemplaza la factura legal con timbrado.'
+};
+
+</script>
+<script>
+(function () {
+'use strict';
+
+/* =====================================================================
+   Configuración y estado
+   ===================================================================== */
+const CFG = Object.assign({
+  NOMBRE: 'Posada', LOGO: '', MONEDA: 'PYG', LOCALE: 'es-PY',
+  DOC_TITULO: 'Comprobante', DOC_NOTA: '', SUPABASE_URL: '', SUPABASE_ANON_KEY: ''
+}, window.APP_CONFIG || {});
+const CF_ID = '00000000-0000-0000-0000-000000000001'; // "Consumidor final"
+const S = { profile: null, rooms: [], clients: [], products: [], tarifas: [] };
+let sb = null;
+let routeTok = 0;
+
+const CATEGORIAS = [['bebida', 'Bebidas'], ['comida', 'Comida'], ['articulo', 'Artículos'], ['servicio', 'Servicios']];
+const MEDIOS = [['efectivo', 'Efectivo'], ['tarjeta', 'Tarjeta'], ['transferencia', 'Transferencia'], ['otro', 'Otro']];
+const catName = c => (CATEGORIAS.find(x => x[0] === c) || [, c])[1];
+
+/* =====================================================================
+   Utilidades
+   ===================================================================== */
+const $ = (s, el = document) => el.querySelector(s);
+
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  const late = [];
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'value' || k === 'checked' || k === 'disabled' || k === 'selected') late.push([k, v]);
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid == null || kid === false) continue;
+    el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  }
+  for (const [k, v] of late) el[k] = v;
+  return el;
+}
+
+const nf = () => new Intl.NumberFormat(CFG.LOCALE, {
+  style: 'currency', currency: CFG.MONEDA, maximumFractionDigits: CFG.MONEDA === 'PYG' ? 0 : 2
+});
+const money = n => nf().format(Number(n || 0));
+const num = n => new Intl.NumberFormat(CFG.LOCALE, { maximumFractionDigits: 2 }).format(Number(n || 0));
+const todayStr = () => new Date().toLocaleDateString('sv-SE'); // AAAA-MM-DD en hora local
+const dfmt = s => (s ? s.split('-').reverse().join('/') : '');
+const addDays = (s, n) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const diffDays = (a, b) => Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 864e5);
+const monthRange = ym => { // 'AAAA-MM' -> [desde, hasta]
+  const [y, m] = ym.split('-').map(Number);
+  return [`${ym}-01`, `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`];
+};
+const sum = (arr, f) => arr.reduce((a, x) => a + Number(f(x) || 0), 0);
+
+function toast(msg, kind = 'ok') {
+  const t = h('div', { class: 'toast ' + kind, role: 'status' }, msg);
+  $('#toasts').append(t);
+  setTimeout(() => t.remove(), kind === 'err' ? 6500 : 2500);
+}
+
+function errMsg(e) {
+  const code = e && e.code;
+  if (code === '23505') return 'Ya existe un registro con esos datos (duplicado).';
+  if (code === '23P01') return 'Esa habitación ya está reservada en esas fechas.';
+  if (code === '23503') return 'No se puede: hay datos asociados a este registro.';
+  if (code === '42501') return 'No tenés permiso para esta acción.';
+  return (e && e.message) || String(e);
+}
+
+async function run(fn) {
+  try { return await fn(); } catch (e) { console.error(e); toast(errMsg(e), 'err'); }
+}
+
+/* reemplaza el contenido de un elemento ignorando null/false y aplanando listas */
+const fill = (el, ...kids) => el.replaceChildren(...kids.flat(Infinity).filter(k => k != null && k !== false));
+const logoImg = cls => CFG.LOGO ? h('img', { class: 'brand-logo ' + (cls || ''), src: CFG.LOGO, alt: '', onerror: e => e.target.remove() }) : null;
+const badge = (t, kind = '') => h('span', { class: 'badge ' + kind }, t);
+
+/* ---- acceso a datos ---- */
+async function sel(table, f) {
+  let q = sb.from(table).select('*');
+  if (f) q = f(q);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data;
+}
+async function selAll(table, f) {
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    let q = sb.from(table).select('*');
+    if (f) q = f(q);
+    const { data, error } = await q.range(from, from + 999);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+async function mut(p) { const { data, error } = await p; if (error) throw error; return data; }
+async function rpc(fn, args) { const { data, error } = await sb.rpc(fn, args); if (error) throw error; return data; }
+async function chunked(table, col, ids) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += 80) out.push(...await sel(table, q => q.in(col, ids.slice(i, i + 80))));
+  return out;
+}
+
+const isAdmin = () => !!S.profile && S.profile.rol === 'admin';
+const roomName = id => (S.rooms.find(r => r.id === id) || {}).nombre || '?';
+const clientById = id => S.clients.find(c => c.id === id);
+const clientName = id => (clientById(id) || {}).nombre_completo || '—';
+const clientLabel = c => `${c.nombre_completo} · ${c.tipo_documento} ${c.nro_documento}`;
+
+/* Precio por noche de una habitación según la cantidad de personas:
+   tarifa exacta; si no hay, la de la mayor cantidad de personas menor; si no, el precio base. */
+function precioHab(roomId, personas) {
+  const room = S.rooms.find(r => r.id === roomId);
+  if (!room) return 0;
+  const t = S.tarifas.filter(x => x.habitacion_id === roomId && x.personas <= personas).sort((a, b) => b.personas - a.personas)[0];
+  return Number(t ? t.precio_noche : room.precio_noche);
+}
+
+async function loadMaster() {
+  const [rooms, products, clients, tarifas] = await Promise.all([
+    sel('habitaciones', q => q.order('nombre')),
+    sel('productos', q => q.order('nombre')),
+    selAll('clientes', q => q.order('nombre_completo')),
+    sel('habitacion_tarifas')
+  ]);
+  S.rooms = rooms; S.products = products; S.clients = clients; S.tarifas = tarifas;
+  $('#dl_clients').replaceChildren(...clients.map(c => h('option', { value: clientLabel(c) })));
+}
+
+/* =====================================================================
+   Componentes: tabla, modal, formularios
+   ===================================================================== */
+function tableEl(cols, rows, { empty = 'Sin registros', cls = '' } = {}) {
+  if (!rows.length) return h('p', { class: 'empty' }, empty);
+  return h('div', { class: 'tablewrap' }, h('table', { class: 't stack ' + cls },
+    h('thead', {}, h('tr', {}, cols.map(c => h('th', { class: c.num ? 'num' : '' }, c.label)))),
+    h('tbody', {}, rows.map(r => h('tr', { class: r._cls || '' },
+      cols.map(c => h('td', { class: c.num ? 'num' : '', 'data-label': c.label }, c.cell(r))))))));
+}
+
+function modal(title, ...body) {
+  const dlg = h('dialog', { class: 'modal' },
+    h('form', { method: 'dialog', class: 'mhead' }, h('h3', {}, title),
+      h('button', { class: 'x', 'aria-label': 'Cerrar' }, '×')),
+    h('div', { class: 'mbody' }, body));
+  dlg.addEventListener('close', () => dlg.remove());
+  document.body.append(dlg);
+  dlg.showModal();
+  return dlg;
+}
+
+function confirmBox(msg, label = 'Confirmar', danger = true) {
+  return new Promise(res => {
+    let ok = false;
+    const dlg = modal('Confirmar', h('p', {}, msg),
+      h('div', { class: 'row end' },
+        h('button', { class: 'btn', onclick: () => dlg.close() }, 'Cancelar'),
+        h('button', { class: 'btn ' + (danger ? 'danger-fill' : 'primary'), onclick: () => { ok = true; dlg.close(); } }, label)));
+    dlg.addEventListener('close', () => res(ok));
+  });
+}
+
+/* Selector de cliente con búsqueda (datalist) y botón "+" para crear */
+function clientPicker(initialId, onChange) {
+  const input = h('input', { list: 'dl_clients', placeholder: 'Escribí nombre o documento…', autocomplete: 'off' });
+  const c0 = initialId && clientById(initialId);
+  if (c0) input.value = clientLabel(c0);
+  const get = () => {
+    const v = input.value.trim();
+    if (!v) return null;
+    const c = S.clients.find(x => clientLabel(x) === v);
+    return c ? c.id : null;
+  };
+  const set = id => { const c = clientById(id); input.value = c ? clientLabel(c) : ''; if (onChange) onChange(); };
+  const plus = h('button', { type: 'button', class: 'btn', title: 'Crear cliente nuevo', onclick: () => clientForm(async c => { set(c.id); }) }, '+');
+  if (onChange) { input.addEventListener('change', onChange); input.addEventListener('input', onChange); }
+  return { node: h('div', { class: 'ctl-client' }, input, plus), input, get, set };
+}
+
+function makeCtl(f, val) {
+  if (f.type === 'client') {
+    const p = clientPicker(val);
+    return { node: p.node, input: p.input, get: p.get, picker: true };
+  }
+  let el;
+  if (f.type === 'select') el = h('select', {}, f.options.map(([v, l]) => h('option', { value: v }, l)));
+  else if (f.type === 'textarea') el = h('textarea', { rows: 3 });
+  else if (f.type === 'checkbox') el = h('input', { type: 'checkbox' });
+  else el = h('input', { type: f.type || 'text', step: f.step || (f.type === 'number' ? 'any' : null), min: f.min });
+  if (f.required) el.required = true;
+  if (f.type === 'checkbox') el.checked = !!(val ?? f.default);
+  else el.value = val ?? f.default ?? (f.type === 'select' && f.options.length ? f.options[0][0] : '');
+  const get = () => {
+    if (f.type === 'checkbox') return el.checked;
+    if (f.type === 'number') return el.value === '' ? null : Number(el.value);
+    const v = el.value.trim();
+    return v === '' ? null : v;
+  };
+  return { node: el, input: el, get };
+}
+
+function formModal({ title, fields, values = {}, onSave, saveLabel = 'Guardar', extra }) {
+  const form = h('form', { class: 'form' });
+  const els = {};
+  for (const f of fields) {
+    els[f.key] = makeCtl(f, values[f.key]);
+    form.append(h('label', { class: 'fld' + (f.type === 'checkbox' ? ' chk' : '') },
+      h('span', {}, f.label + (f.required ? ' *' : '')), els[f.key].node, f.hint ? h('small', {}, f.hint) : null));
+  }
+  const save = h('button', { class: 'btn primary', type: 'submit' }, saveLabel);
+  const dlg = modal(title, form);
+  form.append(h('div', { class: 'row end' }, h('button', { class: 'btn', type: 'button', onclick: () => dlg.close() }, 'Cancelar'), save));
+  form.addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const out = {};
+    for (const f of fields) {
+      out[f.key] = els[f.key].get();
+      if (f.required && out[f.key] == null) { toast(`Completá: ${f.label}`, 'err'); return; }
+    }
+    save.disabled = true;
+    try { await onSave(out); dlg.close(); }
+    catch (e) { console.error(e); toast(errMsg(e), 'err'); save.disabled = false; }
+  });
+  if (extra) extra(els, dlg);
+  return { dlg, els };
+}
+
+/* Pantalla genérica de alta / edición / baja */
+async function crudScreen(root, cfg) {
+  const { title, table, fields, columns, load, canCreate = true, canEdit = isAdmin(), canDelete = isAdmin(),
+    rowActions, onChange, newLabel = 'Nuevo', defaults = {}, prep, toolbar } = cfg;
+  let rows = [];
+  const search = h('input', { type: 'search', class: 'search', placeholder: 'Buscar…', oninput: () => draw() });
+  const list = h('div');
+  const head = [];
+  if (title) head.push(h('h2', {}, title));
+  root.append(...head, h('div', { class: 'toolbar' }, search,
+    toolbar || null,
+    canCreate ? h('button', { class: 'btn primary', onclick: add }, '+ ' + newLabel) : null), list);
+
+  async function reload() { rows = await load(); draw(); }
+  async function after() { await loadMaster(); if (onChange) await onChange(); await reload(); }
+  function draw() {
+    const t = search.value.trim().toLowerCase();
+    const shown = t ? rows.filter(r => JSON.stringify(Object.values(r)).toLowerCase().includes(t)) : rows;
+    const cols = columns.slice();
+    if (canEdit || canDelete || rowActions) {
+      cols.push({ label: '', cell: r => h('div', { class: 'row' },
+        rowActions ? rowActions(r, after) : null,
+        canEdit ? h('button', { class: 'btn sm', onclick: () => edit(r) }, 'Editar') : null,
+        (canDelete && r.id !== CF_ID) ? h('button', { class: 'btn sm danger', onclick: () => del(r) }, 'Eliminar') : null) });
+    }
+    list.replaceChildren(tableEl(cols, shown));
+  }
+  function add() {
+    formModal({ title: newLabel, fields, values: defaults, onSave: async v => {
+      if (prep) prep(v);
+      await mut(sb.from(table).insert(v)); toast('Guardado'); await after();
+    } });
+  }
+  function edit(r) {
+    formModal({ title: 'Editar', fields, values: r, onSave: async v => {
+      if (prep) prep(v);
+      await mut(sb.from(table).update(v).eq('id', r.id)); toast('Guardado'); await after();
+    } });
+  }
+  async function del(r) {
+    if (!await confirmBox('¿Eliminar este registro? No se puede deshacer.', 'Eliminar')) return;
+    await run(async () => { await mut(sb.from(table).delete().eq('id', r.id)); toast('Eliminado'); await after(); });
+  }
+  await reload();
+  return { reload: after };
+}
+
+/* =====================================================================
+   Impresión de comprobantes
+   ===================================================================== */
+function printDoc(d) {
+  const r = $('#printRoot');
+  r.replaceChildren(h('div', {},
+    h('h1', {}, CFG.NOMBRE),
+    h('h2', {}, d.titulo + (d.numero ? ` N° ${String(d.numero).padStart(7, '0')}` : '')),
+    h('p', {}, `Fecha: ${dfmt(d.fecha)}`),
+    d.cliente ? h('p', {}, `Cliente: ${d.cliente}${d.doc ? ` — Doc./RUC: ${d.doc}` : ''}`) : null,
+    h('table', {},
+      h('thead', {}, h('tr', {}, h('th', {}, 'Descripción'), h('th', { class: 'num' }, 'Cant.'), h('th', { class: 'num' }, 'Precio'), h('th', { class: 'num' }, 'Subtotal'))),
+      h('tbody', {}, d.items.map(i => h('tr', {}, h('td', {}, i.descripcion), h('td', { class: 'num' }, num(i.cantidad)), h('td', { class: 'num' }, money(i.precio_unitario)), h('td', { class: 'num' }, money(i.subtotal)))))),
+    h('p', { class: 'ptotal' }, `Total: ${money(d.total)}`),
+    (d.nota || CFG.DOC_NOTA) ? h('p', { class: 'pnote' }, d.nota || CFG.DOC_NOTA) : null));
+  setTimeout(() => window.print(), 60);
+}
+
+async function facturaModal(fid) {
+  const [f] = await sel('facturas', q => q.eq('id', fid));
+  const items = await sel('factura_items', q => q.eq('factura_id', fid).order('origen'));
+  const doc = { titulo: CFG.DOC_TITULO, numero: f.numero, fecha: f.fecha, cliente: f.denominacion, doc: f.identificador_fiscal, items, total: f.total };
+  modal(`${CFG.DOC_TITULO} N° ${String(f.numero).padStart(7, '0')}`,
+    h('p', {}, `${dfmt(f.fecha)} · ${f.denominacion || ''} · ${f.identificador_fiscal || ''} `, f.estado === 'anulada' ? badge('Anulada', 'err') : null),
+    tableEl([
+      { label: 'Descripción', cell: i => i.descripcion }, { label: 'Cant.', cell: i => num(i.cantidad), num: true },
+      { label: 'Precio', cell: i => money(i.precio_unitario), num: true }, { label: 'Subtotal', cell: i => money(i.subtotal), num: true }], items),
+    h('div', { class: 'total' }, money(f.total)),
+    h('div', { class: 'row end' }, h('button', { class: 'btn primary', onclick: () => printDoc(doc) }, 'Imprimir')));
+}
+
+/* =====================================================================
+   Pantalla: Habitaciones
+   ===================================================================== */
+const ESTADOS_HAB = [['libre', 'Libre'], ['ocupada', 'Ocupada'], ['limpieza', 'En limpieza']];
+
+async function screenHabitaciones(root) {
+  await crudScreen(root, {
+    title: 'Habitaciones', table: 'habitaciones', newLabel: 'Nueva habitación', canCreate: true,
+    load: async () => { await loadMaster(); return S.rooms; },
+    fields: [
+      { key: 'nombre', label: 'Nombre / número', required: true },
+      { key: 'tipo', label: 'Tipo (ej. matrimonial, triple)' },
+      { key: 'capacidad', label: 'Capacidad (personas)', type: 'number', default: 2 },
+      { key: 'precio_noche', label: 'Precio base por noche', type: 'number', required: true, min: 0, hint: 'Se usa si no cargás tarifas por cantidad de personas (botón "Tarifas").' },
+      { key: 'estado', label: 'Estado', type: 'select', options: ESTADOS_HAB },
+      { key: 'notas', label: 'Notas', type: 'textarea' }],
+    columns: [
+      { label: 'Habitación', cell: r => h('b', {}, r.nombre) },
+      { label: 'Tipo', cell: r => r.tipo || '—' },
+      { label: 'Cap.', cell: r => r.capacidad, num: true },
+      { label: 'Precio/noche', cell: r => {
+          const t = S.tarifas.filter(x => x.habitacion_id === r.id).sort((a, b) => a.personas - b.personas);
+          return t.length ? t.map(x => `${x.personas}p ${money(x.precio_noche)}`).join(' · ') : `${money(r.precio_noche)} (base)`;
+        } },
+      { label: 'Estado', cell: r => h('select', { class: 'sel-sm st-' + r.estado, value: r.estado, 'aria-label': 'Estado',
+          onchange: e => run(async () => {
+            await mut(sb.from('habitaciones').update({ estado: e.target.value }).eq('id', r.id));
+            await loadMaster(); toast('Estado actualizado'); e.target.className = 'sel-sm st-' + e.target.value;
+          }) }, ESTADOS_HAB.map(([v, l]) => h('option', { value: v }, l))) },
+      { label: 'Situación', cell: r => r.activa ? badge('Activa', 'ok') : badge('De baja') }],
+    rowActions: (r, after) => h('span', { class: 'row' },
+      isAdmin() ? h('button', { class: 'btn sm', onclick: () => tarifasModal(r, after) }, 'Tarifas') : null,
+      h('button', { class: 'btn sm', onclick: () => run(async () => {
+        await mut(sb.from('habitaciones').update({ activa: !r.activa }).eq('id', r.id)); await after();
+      }) }, r.activa ? 'Dar de baja' : 'Reactivar'))
+  });
+}
+
+function tarifasModal(room, after) {
+  const n = Math.max(1, Number(room.capacidad) || 1);
+  const cur = S.tarifas.filter(t => t.habitacion_id === room.id);
+  const inputs = Array.from({ length: n }, (_, i) => {
+    const t = cur.find(x => x.personas === i + 1);
+    return h('input', { type: 'number', min: 0, step: 'any', value: t ? t.precio_noche : '', placeholder: 'sin tarifa' });
+  });
+  const save = h('button', { class: 'btn primary', onclick: () => run(async () => {
+    const rows = [], vacias = [];
+    inputs.forEach((inp, i) => { if (inp.value === '') vacias.push(i + 1); else rows.push({ habitacion_id: room.id, personas: i + 1, precio_noche: Number(inp.value) }); });
+    if (rows.length) await mut(sb.from('habitacion_tarifas').upsert(rows, { onConflict: 'habitacion_id,personas' }));
+    if (vacias.length) await mut(sb.from('habitacion_tarifas').delete().eq('habitacion_id', room.id).in('personas', vacias));
+    await mut(sb.from('habitacion_tarifas').delete().eq('habitacion_id', room.id).gt('personas', n));
+    toast('Tarifas guardadas'); dlg.close(); await after();
+  }) }, 'Guardar');
+  const dlg = modal(`Tarifas — ${room.nombre}`,
+    h('p', { class: 'mut' }, `Precio de la habitación por noche según la cantidad de personas (hasta ${n}, la capacidad). Si dejás una cantidad vacía se usa la tarifa de menos personas, o el precio base (${money(room.precio_noche)}).`),
+    inputs.map((inp, i) => h('label', { class: 'fld' }, h('span', {}, `${i + 1} persona${i ? 's' : ''}`), inp)),
+    h('div', { class: 'row end' }, h('button', { class: 'btn', onclick: () => dlg.close() }, 'Cancelar'), save));
+}
+
+/* =====================================================================
+   Pantalla: Clientes
+   ===================================================================== */
+const CLIENT_FIELDS = [
+  { key: 'nombre_completo', label: 'Nombre y apellido', required: true },
+  { key: 'tipo_documento', label: 'Tipo de documento', type: 'select', options: [['CI', 'CI'], ['DNI', 'DNI'], ['Otro', 'Otro']] },
+  { key: 'nro_documento', label: 'Número de documento', required: true },
+  { key: 'identificador_fiscal', label: 'Identificador fiscal (RUC / CUIT / otro)' },
+  { key: 'denominacion_factura', label: 'Denominación para factura', hint: 'Si queda vacío se usa el nombre.' },
+  { key: 'correo', label: 'Correo electrónico', type: 'email' },
+  { key: 'direccion', label: 'Dirección' },
+  { key: 'ciudad', label: 'Ciudad' },
+  { key: 'pais_origen', label: 'País de origen' },
+  { key: 'comentario', label: 'Comentario', type: 'textarea' }];
+
+function clientForm(done) {
+  formModal({ title: 'Nuevo cliente', fields: CLIENT_FIELDS, values: { tipo_documento: 'CI' }, onSave: async v => {
+    const rows = await mut(sb.from('clientes').insert(v).select());
+    await loadMaster(); toast('Cliente guardado');
+    if (done) await done(rows[0]);
+  } });
+}
+
+async function screenClientes(root) {
+  await crudScreen(root, {
+    title: 'Clientes', table: 'clientes', newLabel: 'Nuevo cliente', fields: CLIENT_FIELDS, defaults: { tipo_documento: 'CI' },
+    load: async () => { await loadMaster(); return S.clients; },
+    columns: [
+      { label: 'Nombre', cell: r => h('b', {}, r.nombre_completo) },
+      { label: 'Documento', cell: r => `${r.tipo_documento} ${r.nro_documento}` },
+      { label: 'Fiscal', cell: r => [r.identificador_fiscal, r.denominacion_factura].filter(Boolean).join(' · ') || '—' },
+      { label: 'Correo', cell: r => r.correo || '—' },
+      { label: 'Lugar', cell: r => [r.ciudad, r.pais_origen].filter(Boolean).join(', ') || '—' }]
+  });
+}
+
+/* =====================================================================
+   Pantalla: Productos y servicios
+   ===================================================================== */
+async function screenProductos(root) {
+  await crudScreen(root, {
+    title: 'Productos y servicios', table: 'productos', newLabel: 'Nuevo producto', canCreate: isAdmin(),
+    defaults: { afecta_stock: true, activo: true, stock: 0, stock_minimo: 0, categoria: 'bebida' },
+    load: async () => { await loadMaster(); return S.products; },
+    prep: v => { v.stock = v.stock ?? 0; v.stock_minimo = v.stock_minimo ?? 0; },
+    fields: [
+      { key: 'nombre', label: 'Nombre', required: true },
+      { key: 'categoria', label: 'Categoría', type: 'select', options: CATEGORIAS, required: true },
+      { key: 'precio', label: 'Precio de venta', type: 'number', required: true, min: 0 },
+      { key: 'afecta_stock', label: 'Afecta stock (se descuenta al vender)', type: 'checkbox', hint: 'Desmarcá para servicios (lavandería, excursión…): se facturan sin controlar stock.' },
+      { key: 'stock', label: 'Stock actual', type: 'number' },
+      { key: 'stock_minimo', label: 'Stock mínimo (alerta)', type: 'number' },
+      { key: 'activo', label: 'Activo (aparece en ventas)', type: 'checkbox' }],
+    columns: [
+      { label: 'Nombre', cell: r => h('b', {}, r.nombre) },
+      { label: 'Categoría', cell: r => catName(r.categoria) },
+      { label: 'Precio', cell: r => money(r.precio), num: true },
+      { label: 'Stock', num: true, cell: r => !r.afecta_stock ? h('span', { class: 'mut' }, 'No controla')
+          : h('span', { class: Number(r.stock) <= Number(r.stock_minimo) ? 'low' : '' }, num(r.stock)) },
+      { label: 'Estado', cell: r => r.activo ? badge('Activo', 'ok') : badge('Inactivo') }],
+    rowActions: isAdmin() ? (r, after) => r.afecta_stock ? h('button', { class: 'btn sm', onclick: () => formModal({
+      title: `Ingreso de stock — ${r.nombre}`, saveLabel: 'Sumar al stock',
+      fields: [{ key: 'cant', label: 'Cantidad que ingresa (negativo para descontar)', type: 'number', required: true }],
+      onSave: async v => { await rpc('ajustar_stock', { p_id: r.id, p_delta: v.cant }); toast('Stock actualizado'); await after(); } }) }, '+ Ingreso') : null : null
+  });
+}
+
+/* =====================================================================
+   Pantalla: Reservas (calendario)
+   ===================================================================== */
+const ESTADOS_RES = { reservada: 'Reservada', en_casa: 'En casa', finalizada: 'Finalizada', cancelada: 'Cancelada' };
+
+async function screenReservas(root) {
+  await loadMaster();
+  let from = todayStr(); const DAYS = 14;
+  const dateIn = h('input', { type: 'date', value: from, 'aria-label': 'Desde', onchange: e => { if (e.target.value) { from = e.target.value; draw(); } } });
+  const box = h('div');
+  root.append(h('h2', {}, 'Reservas'),
+    h('div', { class: 'toolbar' },
+      h('button', { class: 'btn', onclick: () => { from = addDays(from, -7); dateIn.value = from; draw(); } }, '← Semana'),
+      dateIn,
+      h('button', { class: 'btn', onclick: () => { from = addDays(from, 7); dateIn.value = from; draw(); } }, 'Semana →'),
+      h('button', { class: 'btn', onclick: () => { from = todayStr(); dateIn.value = from; draw(); } }, 'Hoy'),
+      h('span', { class: 'grow' }),
+      h('button', { class: 'btn primary', onclick: () => resForm({}) }, '+ Nueva reserva')), box);
+
+  async function draw() {
+    await run(async () => {
+      const end = addDays(from, DAYS);
+      const list = await sel('reservas', q => q.lt('fecha_entrada', end).gt('fecha_salida', from).neq('estado', 'cancelada').order('fecha_entrada'));
+      const dates = Array.from({ length: DAYS }, (_, i) => addDays(from, i));
+      const rooms = S.rooms.filter(r => r.activa);
+      const wk = d => { const w = new Date(d + 'T00:00:00Z').getUTCDay(); return w === 0 || w === 6; };
+      const DOW = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+      const thead = h('tr', {}, h('th', { class: 'room' }, 'Habitación'), dates.map(d =>
+        h('th', { class: (d === todayStr() ? 'today ' : '') + (wk(d) ? 'wk' : '') }, DOW[new Date(d + 'T00:00:00Z').getUTCDay()], h('br'), d.slice(8) + '/' + d.slice(5, 7))));
+      const body = rooms.map(room => {
+        const tr = h('tr', {}, h('td', { class: 'room' }, h('b', {}, room.nombre), ' ', h('span', { class: 'badge st-' + room.estado }, room.estado === 'limpieza' ? 'limp.' : room.estado)));
+        for (let i = 0; i < DAYS;) {
+          const d = dates[i];
+          const r = list.find(x => x.habitacion_id === room.id && x.fecha_entrada <= d && x.fecha_salida > d);
+          if (r) {
+            const span = Math.min(diffDays(d, r.fecha_salida), DAYS - i);
+            tr.append(h('td', { class: 'res st-' + r.estado, colspan: span, title: `${clientName(r.cliente_id)} · ${r.personas} pers. (${dfmt(r.fecha_entrada)} → ${dfmt(r.fecha_salida)})`, onclick: () => resDetail(r) }, clientName(r.cliente_id)));
+            i += span;
+          } else {
+            tr.append(h('td', { class: 'free' + (wk(d) ? ' wk' : ''), title: 'Nueva reserva', onclick: () => resForm({ habitacion_id: room.id, fecha_entrada: d }) }));
+            i++;
+          }
+        }
+        return tr;
+      });
+      const rows = list.map(r => Object.assign({}, r));
+      fill(box, 
+        rooms.length ? h('div', { class: 'tablewrap' }, h('table', { class: 'cal' }, h('thead', {}, thead), h('tbody', {}, body)))
+                     : h('p', { class: 'empty' }, 'Primero cargá las habitaciones.'),
+        h('p', { class: 'mut' }, 'Tocá un casillero libre para reservar, o una reserva para ver el detalle. La fecha de salida es el día del check-out (esa noche queda libre).'),
+        h('h3', { class: 'sec' }, 'Reservas del período'),
+        tableEl([
+          { label: 'Habitación', cell: r => roomName(r.habitacion_id) },
+          { label: 'Huésped', cell: r => clientName(r.cliente_id) },
+          { label: 'Pers.', cell: r => r.personas, num: true },
+          { label: 'Entrada', cell: r => dfmt(r.fecha_entrada) },
+          { label: 'Salida', cell: r => dfmt(r.fecha_salida) },
+          { label: 'Estado', cell: r => badge(ESTADOS_RES[r.estado], r.estado === 'en_casa' ? 'warn' : '') },
+          { label: '', cell: r => h('button', { class: 'btn sm', onclick: () => resDetail(r) }, 'Ver') }], rows, { empty: 'No hay reservas en estas fechas.' }));
+    });
+  }
+
+  function resFields() {
+    return [
+      { key: 'habitacion_id', label: 'Habitación', type: 'select', required: true, options: S.rooms.filter(r => r.activa).map(r => [r.id, `${r.nombre} — ${money(r.precio_noche)}`]) },
+      { key: 'cliente_id', label: 'Huésped', type: 'client', required: true },
+      { key: 'personas', label: 'Cantidad de personas', type: 'number', required: true, min: 1, step: '1' },
+      { key: 'fecha_entrada', label: 'Entrada', type: 'date', required: true },
+      { key: 'fecha_salida', label: 'Salida', type: 'date', required: true },
+      { key: 'precio_noche', label: 'Precio por noche', type: 'number', required: true, min: 0, hint: 'Se calcula según la tarifa de la habitación para esa cantidad de personas; se puede ajustar.' },
+      { key: 'notas', label: 'Notas', type: 'textarea' }];
+  }
+  function resForm(init, existing) {
+    const vals = existing ? existing : Object.assign({ personas: 2, fecha_salida: init.fecha_entrada ? addDays(init.fecha_entrada, 1) : '' }, init);
+    if (!existing && init.habitacion_id) vals.precio_noche = precioHab(init.habitacion_id, vals.personas);
+    formModal({ title: existing ? 'Editar reserva' : 'Nueva reserva', fields: resFields(), values: vals,
+      extra: (els, dlg) => {
+        const info = h('p', { class: 'total' });
+        const form = dlg.querySelector('.mbody form');
+        form.insertBefore(info, form.lastChild);
+        const upd = () => {
+          const a = els.fecha_entrada.get(), b = els.fecha_salida.get(), pr = Number(els.precio_noche.get()) || 0;
+          const n = a && b ? diffDays(a, b) : 0;
+          const room = S.rooms.find(x => x.id === els.habitacion_id.get());
+          const over = room && room.capacidad && Number(els.personas.get()) > room.capacidad;
+          info.textContent = n > 0 ? `${n} noche${n === 1 ? '' : 's'} × ${money(pr)} = ${money(n * pr)}` + (over ? `  ·  ⚠ capacidad máx. ${room.capacidad}` : '') : '';
+        };
+        const recalc = () => {
+          const hid = els.habitacion_id.get();
+          if (hid) els.precio_noche.input.value = precioHab(hid, Number(els.personas.get()) || 1);
+          upd();
+        };
+        ['habitacion_id', 'personas'].forEach(k => els[k].input.addEventListener('input', recalc));
+        ['fecha_entrada', 'fecha_salida', 'precio_noche'].forEach(k => els[k].input.addEventListener('input', upd));
+        if (existing) upd(); else recalc();
+      },
+      onSave: async v => {
+        if (v.fecha_salida <= v.fecha_entrada) throw new Error('La salida debe ser posterior a la entrada.');
+        const room = S.rooms.find(r => r.id === v.habitacion_id);
+        if (room && room.capacidad && v.personas > room.capacidad) throw new Error(`La habitación ${room.nombre} admite hasta ${room.capacidad} personas.`);
+        if (existing) await mut(sb.from('reservas').update(v).eq('id', existing.id));
+        else await mut(sb.from('reservas').insert(v));
+        toast('Reserva guardada'); draw();
+      } });
+  }
+  async function setEstado(r, estado, habEstado) {
+    await run(async () => {
+      await mut(sb.from('reservas').update({ estado }).eq('id', r.id));
+      if (habEstado) await mut(sb.from('habitaciones').update({ estado: habEstado }).eq('id', r.habitacion_id));
+      await loadMaster(); toast('Reserva actualizada'); draw();
+    });
+  }
+  function resDetail(r) {
+    const noches = diffDays(r.fecha_entrada, r.fecha_salida);
+    const acts = [];
+    const close = () => dlg.close();
+    if (r.estado === 'reservada') acts.push(h('button', { class: 'btn primary', onclick: () => { close(); setEstado(r, 'en_casa', 'ocupada'); } }, 'Check-in'));
+    if (r.estado === 'en_casa') acts.push(h('button', { class: 'btn primary', onclick: () => { close(); setEstado(r, 'finalizada', 'limpieza'); } }, 'Check-out'));
+    if (r.estado === 'en_casa' || r.estado === 'finalizada') acts.push(h('button', { class: 'btn', onclick: () => { close(); location.hash = '#/cuentas'; } }, 'Ir a la cuenta'));
+    if (r.estado === 'reservada') acts.push(h('button', { class: 'btn danger', onclick: async () => { if (await confirmBox('¿Cancelar esta reserva?', 'Cancelar reserva')) { close(); setEstado(r, 'cancelada'); } } }, 'Cancelar reserva'));
+    if (isAdmin()) {
+      acts.push(h('button', { class: 'btn', onclick: () => { close(); resForm({}, r); } }, 'Editar'));
+      acts.push(h('button', { class: 'btn danger', onclick: async () => { if (await confirmBox('¿Eliminar la reserva definitivamente?', 'Eliminar')) { close(); await run(async () => { await mut(sb.from('reservas').delete().eq('id', r.id)); draw(); }); } } }, 'Eliminar'));
+    }
+    const dlg = modal(`Reserva — ${roomName(r.habitacion_id)}`,
+      h('p', {}, h('b', {}, clientName(r.cliente_id)), ' ', badge(ESTADOS_RES[r.estado], r.estado === 'en_casa' ? 'warn' : '')),
+      h('p', {}, `${dfmt(r.fecha_entrada)} → ${dfmt(r.fecha_salida)} · ${noches} noche${noches === 1 ? '' : 's'} · ${r.personas} persona${r.personas === 1 ? '' : 's'}`),
+      h('p', {}, `${money(r.precio_noche)} por noche · Alojamiento: `, h('b', {}, money(noches * r.precio_noche))),
+      r.notas ? h('p', { class: 'mut' }, r.notas) : null,
+      h('div', { class: 'row' }, acts));
+  }
+  await draw();
+}
+
+/* =====================================================================
+   Pantalla: Ventas (punto de venta)
+   ===================================================================== */
+async function screenVentas(root) {
+  await loadMaster();
+  const cart = new Map();
+  let cat = 'todas';
+  const q = h('input', { type: 'search', placeholder: 'Buscar producto…', oninput: () => drawTiles() });
+  const chips = h('div', { class: 'chips' });
+  const tiles = h('div', { class: 'tiles' });
+  const cartBox = h('div', { class: 'cart' });
+  const hist = h('div');
+  const histDate = h('input', { type: 'date', value: todayStr(), onchange: () => loadHist() });
+
+  const picker = clientPicker(null, () => refreshReservas());
+  const resSel = h('select', {}, h('option', { value: '' }, '— sin reserva —'));
+  const resWrap = h('label', { class: 'fld', style: 'display:none' }, h('span', {}, 'Reserva del huésped'), resSel);
+  const modo = h('select', {}, h('option', { value: 'cobrada' }, 'Cobrar ahora'), h('option', { value: 'a_cuenta' }, 'Cargar a la cuenta del huésped'));
+  const medio = h('select', {}, MEDIOS.map(([v, l]) => h('option', { value: v }, l)));
+  const medioWrap = h('label', { class: 'fld' }, h('span', {}, 'Medio de pago'), medio);
+  const fact = h('input', { type: 'checkbox' });
+  const factWrap = h('label', { class: 'fld chk' }, fact, h('span', {}, 'Emitir factura ahora'));
+  const btn = h('button', { class: 'btn primary', onclick: () => submit() }, 'Registrar venta');
+  modo.addEventListener('change', () => { const c = modo.value === 'cobrada'; medioWrap.style.display = c ? '' : 'none'; factWrap.style.display = c ? '' : 'none'; });
+
+  root.append(h('h2', {}, 'Ventas'), h('div', { class: 'pos' },
+    h('div', {}, h('div', { class: 'row' }, q), h('div', { style: 'margin-top:8px' }, chips), tiles),
+    h('div', {}, cartBox)), h('h3', { class: 'sec' }, 'Ventas registradas'), h('div', { class: 'toolbar' }, h('label', { class: 'inline' }, 'Día ', histDate)), hist);
+
+  function drawChips() {
+    chips.replaceChildren(...[['todas', 'Todo']].concat(CATEGORIAS).map(([v, l]) =>
+      h('button', { class: 'chip' + (cat === v ? ' on' : ''), onclick: () => { cat = v; drawChips(); drawTiles(); } }, l)));
+  }
+  function drawTiles() {
+    const t = q.value.trim().toLowerCase();
+    const list = S.products.filter(p => p.activo && (cat === 'todas' || p.categoria === cat) && (!t || p.nombre.toLowerCase().includes(t)));
+    tiles.replaceChildren(...(list.length ? list.map(p => {
+      const out = p.afecta_stock && Number(p.stock) <= 0;
+      return h('button', { class: 'tile', disabled: out, onclick: () => addItem(p) },
+        h('b', {}, p.nombre), h('span', {}, money(p.precio)),
+        p.afecta_stock ? h('small', { class: Number(p.stock) <= Number(p.stock_minimo) ? 'low' : '' }, out ? 'Sin stock' : `Stock: ${num(p.stock)}`) : h('small', {}, 'Servicio'));
+    }) : [h('p', { class: 'empty' }, 'No hay productos. El administrador puede cargarlos en "Productos".')]));
+  }
+  function addItem(p, d = 1) {
+    const cur = cart.get(p.id), nx = (cur ? cur.n : 0) + d;
+    if (nx <= 0) cart.delete(p.id);
+    else if (p.afecta_stock && nx > Number(p.stock)) return toast(`Stock insuficiente de ${p.nombre}`, 'err');
+    else cart.set(p.id, { n: nx, precio: cur ? cur.precio : Number(p.precio) });
+    drawCart();
+  }
+  let totalEl = null;
+  const total = () => sum([...cart.values()], l => l.precio * l.n);
+  function drawCart() {
+    const lines = [...cart].map(([id, l]) => {
+      const p = S.products.find(x => x.id === id);
+      const sub = h('b', { class: 'num' }, money(l.precio * l.n));
+      const nota = h('small', { class: 'mut' });
+      const refresh = () => {
+        sub.textContent = money(l.precio * l.n);
+        nota.textContent = l.precio !== Number(p.precio) ? ` (lista ${money(p.precio)})` : '';
+        totalEl.textContent = money(total());
+      };
+      const price = h('input', { type: 'number', class: 'price-in', min: 0, step: 'any', value: l.precio, 'aria-label': `Precio de ${p.nombre}`,
+        oninput: e => { const v = Number(e.target.value); if (e.target.value !== '' && v >= 0) { l.precio = v; refresh(); } },
+        onchange: e => { if (e.target.value === '' || !(Number(e.target.value) >= 0)) e.target.value = l.precio; } });
+      nota.textContent = l.precio !== Number(p.precio) ? ` (lista ${money(p.precio)})` : '';
+      return h('div', { class: 'cartline' },
+        h('span', {}, h('b', {}, p.nombre), nota),
+        sub,
+        h('label', { class: 'inline' }, h('small', { class: 'mut' }, 'Precio'), price),
+        h('span', { class: 'qty' }, h('button', { class: 'btn sm', onclick: () => addItem(p, -1), 'aria-label': 'Menos' }, '−'), h('b', {}, num(l.n)), h('button', { class: 'btn sm', onclick: () => addItem(p, 1), 'aria-label': 'Más' }, '+')));
+    });
+    totalEl = h('div', { class: 'total' }, money(total()));
+    fill(cartBox, h('h3', {}, 'Venta actual'),
+      lines.length ? lines : h('p', { class: 'mut' }, 'Tocá un producto para agregarlo. Podés cambiar el precio de cada ítem.'),
+      totalEl,
+      h('label', { class: 'fld' }, h('span', {}, 'Huésped / cliente (opcional si cobrás ahora)'), picker.node), resWrap,
+      h('label', { class: 'fld' }, h('span', {}, 'Forma de cobro'), modo), medioWrap, factWrap, btn);
+  }
+  async function refreshReservas() {
+    const id = picker.get();
+    resSel.replaceChildren(h('option', { value: '' }, '— sin reserva —'));
+    resWrap.style.display = 'none';
+    if (!id) return;
+    await run(async () => {
+      const rs = await sel('reservas', q2 => q2.eq('cliente_id', id).in('estado', ['reservada', 'en_casa']));
+      if (!rs.length) return;
+      resSel.replaceChildren(h('option', { value: '' }, '— sin reserva —'), ...rs.map(r => h('option', { value: r.id }, `${roomName(r.habitacion_id)} ${dfmt(r.fecha_entrada)}→${dfmt(r.fecha_salida)}`)));
+      const enCasa = rs.find(r => r.estado === 'en_casa'); if (enCasa) resSel.value = enCasa.id;
+      resWrap.style.display = '';
+    });
+  }
+  async function submit() {
+    if (!cart.size) return toast('La venta está vacía', 'err');
+    const cli = picker.get();
+    if (picker.input.value.trim() && !cli) return toast('Elegí el cliente de la lista (o creálo con "+")', 'err');
+    const estado = modo.value;
+    if (estado === 'a_cuenta' && !cli) return toast('Para cargar a la cuenta elegí al huésped', 'err');
+    btn.disabled = true;
+    try {
+      const items = [...cart].map(([producto_id, l]) => ({ producto_id, cantidad: l.n, precio: l.precio }));
+      const vid = await rpc('registrar_venta', { p_cliente: cli, p_reserva: resSel.value || null, p_estado: estado, p_medio: medio.value, p_items: items });
+      let fid = null;
+      if (fact.checked && estado === 'cobrada') {
+        try { fid = await rpc('emitir_factura', { p_cliente: cli || CF_ID, p_reserva: null, p_alojamiento: false, p_ventas: [vid], p_medio: medio.value }); }
+        catch (e) { toast('Venta registrada, pero no se pudo emitir la factura: ' + errMsg(e), 'err'); }
+      }
+      cart.clear(); picker.input.value = ''; fact.checked = false; await refreshReservas();
+      await loadMaster(); drawTiles(); drawCart(); toast('Venta registrada'); loadHist();
+      if (fid) facturaModal(fid);
+    } catch (e) { console.error(e); toast(errMsg(e), 'err'); }
+    btn.disabled = false;
+  }
+  async function loadHist() {
+    await run(async () => {
+      const vs = await sel('ventas', q2 => q2.eq('fecha', histDate.value).order('created_at', { ascending: false }));
+      const items = vs.length ? await chunked('venta_items', 'venta_id', vs.map(v => v.id)) : [];
+      const facts = vs.some(v => v.factura_id) ? await chunked('facturas', 'id', vs.filter(v => v.factura_id).map(v => v.factura_id)) : [];
+      const rows = vs.map(v => Object.assign({}, v, { items: items.filter(i => i.venta_id === v.id) }));
+      fill(hist, tableEl([
+        { label: 'Hora', cell: v => new Date(v.created_at).toLocaleTimeString(CFG.LOCALE, { hour: '2-digit', minute: '2-digit' }) },
+        { label: 'Detalle', cell: v => v.items.map(i => `${num(i.cantidad)}× ${i.descripcion}` + (i.precio_lista != null && Number(i.precio_lista) !== Number(i.precio_unitario) ? ` (a ${money(i.precio_unitario)})` : '')).join(', ') },
+        { label: 'Cliente', cell: v => v.cliente_id ? clientName(v.cliente_id) : '—' },
+        { label: 'Estado', cell: v => v.estado_cobro === 'cobrada' ? badge('Cobrada', 'ok') : badge('A cuenta', 'warn') },
+        { label: 'Factura', cell: v => { const f = facts.find(x => x.id === v.factura_id); return f ? h('a', { href: '#', onclick: e => { e.preventDefault(); run(() => facturaModal(f.id)); } }, 'N° ' + String(f.numero).padStart(7, '0')) : '—'; } },
+        { label: 'Total', cell: v => money(v.total), num: true },
+        { label: '', cell: v => isAdmin() ? h('button', { class: 'btn sm danger', onclick: async () => {
+            if (!await confirmBox('¿Anular esta venta? Se repone el stock.', 'Anular venta')) return;
+            await run(async () => { await rpc('anular_venta', { p_id: v.id }); await loadMaster(); drawTiles(); toast('Venta anulada'); loadHist(); });
+          } }, 'Anular') : null }], rows, { empty: 'No hay ventas ese día.' }));
+    });
+  }
+  drawChips(); drawTiles(); drawCart(); await loadHist();
+}
+
+/* =====================================================================
+   Pantalla: Cuentas de huéspedes (consumo + facturación)
+   ===================================================================== */
+async function screenCuentas(root) {
+  await loadMaster();
+  root.append(h('h2', {}, 'Cuentas de huéspedes'),
+    h('p', { class: 'mut' }, 'Consumos cargados a la cuenta y alojamientos pendientes de cobrar o facturar (reservas en casa o finalizadas en los últimos 30 días).'));
+  const box = h('div'); root.append(box);
+
+  async function load() {
+    const [ventas, reservas, facts] = await Promise.all([
+      sel('ventas', q => q.eq('estado_cobro', 'a_cuenta').is('factura_id', null).order('created_at')),
+      sel('reservas', q => q.in('estado', ['en_casa', 'finalizada']).gte('fecha_salida', addDays(todayStr(), -30))),
+      sel('facturas', q => q.eq('estado', 'emitida').eq('incluye_alojamiento', true))]);
+    const billed = new Set(facts.map(f => f.reserva_id));
+    const items = ventas.length ? await chunked('venta_items', 'venta_id', ventas.map(v => v.id)) : [];
+    ventas.forEach(v => { v.items = items.filter(i => i.venta_id === v.id); });
+    const pend = reservas.filter(r => !billed.has(r.id));
+    const map = new Map();
+    const get = id => { if (!map.has(id)) map.set(id, { id, ventas: [], reservas: [] }); return map.get(id); };
+    ventas.forEach(v => get(v.cliente_id).ventas.push(v));
+    pend.forEach(r => get(r.cliente_id).reservas.push(r));
+    const cuentas = [...map.values()];
+    const alo = c => sum(c.reservas, r => diffDays(r.fecha_entrada, r.fecha_salida) * r.precio_noche);
+    fill(box, cuentas.length ? h('div', { class: 'cards' }, cuentas.map(c => h('div', { class: 'card' },
+      h('b', {}, clientName(c.id)),
+      h('span', { class: 'mut' }, `Alojamiento: ${money(alo(c))} · Consumos: ${money(sum(c.ventas, v => v.total))}`),
+      h('b', {}, money(alo(c) + sum(c.ventas, v => v.total))),
+      h('button', { class: 'btn primary', onclick: () => cuentaModal(c) }, 'Abrir cuenta')))) : h('p', { class: 'empty' }, 'No hay cuentas pendientes.'));
+  }
+
+  function cuentaModal(c) {
+    const cli = clientById(c.id);
+    const resSel = h('select', {}, h('option', { value: '' }, '— sin alojamiento —'), c.reservas.map(r => {
+      const n = diffDays(r.fecha_entrada, r.fecha_salida);
+      return h('option', { value: r.id }, `${roomName(r.habitacion_id)} (${r.personas} pers.) ${dfmt(r.fecha_entrada)}→${dfmt(r.fecha_salida)} · ${money(n * r.precio_noche)}`);
+    }));
+    if (c.reservas.length) resSel.value = c.reservas[0].id;
+    const medio = h('select', {}, MEDIOS.map(([v, l]) => h('option', { value: v }, l)));
+    const checks = c.ventas.map(v => h('input', { type: 'checkbox', checked: true, onchange: upd }));
+    const tot = h('div', { class: 'total' });
+    function chosen() { return c.ventas.filter((v, i) => checks[i].checked); }
+    function aloAmt() { const r = c.reservas.find(x => x.id === resSel.value); return r ? diffDays(r.fecha_entrada, r.fecha_salida) * r.precio_noche : 0; }
+    function upd() { tot.textContent = money(aloAmt() + sum(chosen(), v => v.total)); }
+    resSel.addEventListener('change', upd);
+    const finish = async fn => { await run(async () => { const r = await fn(); dlg.close(); await load(); if (r && r.fid) facturaModal(r.fid); }); };
+    const dlg = modal(`Cuenta de ${cli ? cli.nombre_completo : ''}`,
+      h('label', { class: 'fld' }, h('span', {}, 'Alojamiento a incluir'), resSel),
+      h('div', {}, h('b', {}, 'Consumos pendientes'), c.ventas.length ? c.ventas.map((v, i) =>
+        h('label', { class: 'fld chk' }, checks[i], h('span', {}, `${dfmt(v.fecha)} — ${v.items.map(x => `${num(x.cantidad)}× ${x.descripcion}`).join(', ')} — `, h('b', {}, money(v.total))))) : h('p', { class: 'mut' }, 'Sin consumos pendientes.')),
+      h('label', { class: 'fld' }, h('span', {}, 'Medio de pago'), medio),
+      tot,
+      h('p', { class: 'mut' }, 'Para facturar por separado, destildá lo que no quieras incluir y repetí la operación con el resto.'),
+      h('div', { class: 'row end' },
+        h('button', { class: 'btn', onclick: () => {
+          const r = c.reservas.find(x => x.id === resSel.value);
+          const items = chosen().flatMap(v => v.items);
+          if (r) items.unshift({ descripcion: `Alojamiento ${roomName(r.habitacion_id)}, ${r.personas} persona(s)`, cantidad: diffDays(r.fecha_entrada, r.fecha_salida), precio_unitario: r.precio_noche, subtotal: aloAmt() });
+          printDoc({ titulo: 'Resumen de cuenta', fecha: todayStr(), cliente: cli && cli.nombre_completo, doc: cli && `${cli.tipo_documento} ${cli.nro_documento}`, items, total: sum(items, i => i.subtotal), nota: 'Resumen informativo, no es una factura.' });
+        } }, 'Imprimir resumen'),
+        h('button', { class: 'btn', onclick: () => {
+          const ids = chosen().map(v => v.id);
+          if (!ids.length) return toast('No hay consumos tildados para cobrar', 'err');
+          finish(async () => { await rpc('cobrar_cuenta', { p_ventas: ids, p_medio: medio.value }); toast('Consumos cobrados'); });
+        } }, 'Cobrar consumos sin factura'),
+        h('button', { class: 'btn primary', onclick: () => finish(async () => {
+          const r = c.reservas.find(x => x.id === resSel.value);
+          const fid = await rpc('emitir_factura', { p_cliente: c.id, p_reserva: r ? r.id : null, p_alojamiento: !!r, p_ventas: chosen().map(v => v.id), p_medio: medio.value });
+          toast('Factura emitida'); return { fid };
+        }) }, 'Emitir factura')));
+    upd();
+  }
+  await load();
+}
+
+/* =====================================================================
+   Pantalla: Facturas
+   ===================================================================== */
+async function screenFacturas(root) {
+  const [d0, d1] = monthRange(todayStr().slice(0, 7));
+  const desde = h('input', { type: 'date', value: d0, onchange: () => load() });
+  const hasta = h('input', { type: 'date', value: d1, onchange: () => load() });
+  const box = h('div');
+  root.append(h('h2', {}, 'Facturas emitidas'), h('div', { class: 'toolbar' }, h('label', { class: 'inline' }, 'Desde ', desde), h('label', { class: 'inline' }, 'Hasta ', hasta)), box);
+  async function load() {
+    await run(async () => {
+      const rows = await sel('facturas', q => q.gte('fecha', desde.value).lte('fecha', hasta.value).order('numero', { ascending: false }));
+      const ok = rows.filter(f => f.estado === 'emitida');
+      fill(box, tableEl([
+        { label: 'N°', cell: f => String(f.numero).padStart(7, '0') },
+        { label: 'Fecha', cell: f => dfmt(f.fecha) },
+        { label: 'Cliente', cell: f => f.denominacion || clientName(f.cliente_id) },
+        { label: 'Estado', cell: f => f.estado === 'anulada' ? badge('Anulada', 'err') : badge('Emitida', 'ok') },
+        { label: 'Total', cell: f => money(f.total), num: true },
+        { label: '', cell: f => h('div', { class: 'row' },
+            h('button', { class: 'btn sm', onclick: () => run(() => facturaModal(f.id)) }, 'Ver / imprimir'),
+            (isAdmin() && f.estado === 'emitida') ? h('button', { class: 'btn sm danger', onclick: async () => {
+              if (!await confirmBox('¿Anular la factura? Las ventas vuelven a la cuenta del huésped y se quita el cobro de la caja.', 'Anular factura')) return;
+              await run(async () => { await rpc('anular_factura', { p_id: f.id }); toast('Factura anulada'); load(); });
+            } }, 'Anular') : null) }], rows, { empty: 'No hay facturas en ese período.' }),
+        rows.length ? h('p', { class: 'total' }, `Total facturado: ${money(sum(ok, f => f.total))}`) : null);
+    });
+  }
+  await load();
+}
+
+/* =====================================================================
+   Pantalla: Caja (gastos + resumen)
+   ===================================================================== */
+async function screenCaja(root) {
+  root.append(h('h2', {}, 'Caja'));
+  const mes = h('input', { type: 'month', value: todayStr().slice(0, 7), onchange: () => { resumen(); ctl.reload(); } });
+  const aperBox = h('div');
+  const resBox = h('div');
+  const range = () => isAdmin() ? monthRange(mes.value) : [todayStr(), todayStr()];
+  root.append(aperBox);
+  if (isAdmin()) root.append(h('div', { class: 'toolbar' }, h('label', { class: 'inline' }, 'Mes ', mes)), resBox);
+
+  /* ---- saldo inicial ---- */
+  async function aperturaForm(fecha, existing) {
+    let sugerido = null;
+    if (!existing) { try { sugerido = await rpc('caja_saldo_previo', { p_fecha: fecha }); } catch (e) { /* sin sugerencia */ } }
+    formModal({
+      title: existing ? `Corregir saldo inicial (${dfmt(fecha)})` : 'Saldo inicial de caja',
+      values: { fecha, monto: existing ? existing.monto : (sugerido != null ? sugerido : '') },
+      fields: [].concat(isAdmin() && !existing ? [{ key: 'fecha', label: 'Fecha', type: 'date', required: true }] : [],
+        [{ key: 'monto', label: 'Efectivo con el que arranca la caja', type: 'number', required: true, min: 0,
+           hint: sugerido != null ? `Sugerido: ${money(sugerido)} (lo que quedó en caja desde la última apertura cargada).` : null }]),
+      onSave: async v => {
+        if (existing) await mut(sb.from('caja_apertura').update({ monto: v.monto }).eq('fecha', fecha));
+        else await mut(sb.from('caja_apertura').insert({ fecha: v.fecha || fecha, monto: v.monto }));
+        toast('Saldo inicial guardado'); await aperturaDraw(); await resumen();
+      } });
+  }
+  async function aperturaDraw() {
+    await run(async () => {
+      const hoy = todayStr();
+      const a = (await sel('caja_apertura', q => q.eq('fecha', hoy)))[0];
+      fill(aperBox, h('div', { class: 'card', style: 'margin-bottom:12px' },
+        h('span', { class: 'mut' }, `Saldo inicial de hoy (${dfmt(hoy)})`),
+        a ? h('b', { style: 'font-size:20px' }, money(a.monto)) : h('span', { class: 'low' }, 'Todavía no cargado'),
+        h('div', { class: 'row' },
+          !a ? h('button', { class: 'btn primary', onclick: () => run(() => aperturaForm(hoy)) }, 'Cargar saldo inicial') : null,
+          (a && isAdmin()) ? h('button', { class: 'btn', onclick: () => run(() => aperturaForm(hoy, a)) }, 'Corregir') : null,
+          isAdmin() ? h('button', { class: 'btn', onclick: () => run(() => aperturaForm(hoy)) }, 'Cargar otra fecha') : null)));
+    });
+  }
+
+  /* ---- resumen del mes (administrador) ---- */
+  async function resumen() {
+    if (!isAdmin()) return;
+    await run(async () => {
+      const [d0, d1] = range();
+      const rows = await rpc('resumen_caja', { p_desde: d0, p_hasta: d1 });
+      const ing = sum(rows, r => r.ingresos), gas = sum(rows, r => r.gastos);
+      const ini = (rows.find(r => r.inicial != null) || {}).inicial || 0;
+      const saldoDia = r => Number(r.inicial || 0) + Number(r.ingresos) - Number(r.gastos);
+      fill(resBox,
+        h('div', { class: 'kpis' },
+          kpi('Saldo inicial del mes', money(ini)), kpi('Ingresos cobrados', money(ing)), kpi('Gastos', money(gas)),
+          kpi('Saldo de caja', money(ini + ing - gas), ini + ing - gas < 0)),
+        tableEl([
+          { label: 'Día', cell: r => r._cls ? 'Total del mes' : dfmt(r.fecha) },
+          { label: 'Saldo inicial', cell: r => r.inicial == null && !r._cls ? h('span', { class: 'mut' }, 'sin cargar') : money(r.inicial), num: true },
+          { label: 'Ingresos', cell: r => money(r.ingresos), num: true },
+          { label: 'Gastos', cell: r => money(r.gastos), num: true },
+          { label: 'Saldo', cell: r => money(r._cls ? r.saldo : saldoDia(r)), num: true }],
+          rows.length ? rows.concat([{ inicial: ini, ingresos: ing, gastos: gas, saldo: ini + ing - gas, _cls: 'tot' }]) : [],
+          { empty: 'Sin movimientos en el mes.' }),
+        h('p', { class: 'mut' }, 'Saldo del día = saldo inicial + ingresos cobrados − gastos. El saldo del mes parte del primer saldo inicial cargado.'),
+        h('h3', { class: 'sec' }, 'Gastos del mes'));
+    });
+  }
+  const listBox = h('div');
+  root.append(listBox);
+  if (!isAdmin()) root.insertBefore(h('h3', { class: 'sec' }, 'Gastos de hoy'), listBox);
+  const ctl = await crudScreen(listBox, {
+    title: null, table: 'gastos_caja', newLabel: 'Cargar gasto', canCreate: true, defaults: { fecha: todayStr() },
+    load: () => { const [d0, d1] = range(); return sel('gastos_caja', q => q.gte('fecha', d0).lte('fecha', d1).order('fecha', { ascending: false }).order('created_at', { ascending: false })); },
+    onChange: resumen,
+    fields: [].concat(isAdmin() ? [{ key: 'fecha', label: 'Fecha', type: 'date', required: true }] : [],
+      [{ key: 'concepto', label: 'Concepto', required: true }, { key: 'monto', label: 'Monto', type: 'number', required: true, min: 1 }, { key: 'comentario', label: 'Comentario', type: 'textarea' }]),
+    columns: [{ label: 'Fecha', cell: r => dfmt(r.fecha) }, { label: 'Concepto', cell: r => h('b', {}, r.concepto) },
+      { label: 'Monto', cell: r => money(r.monto), num: true }, { label: 'Comentario', cell: r => r.comentario || '—' }]
+  });
+  await aperturaDraw();
+  await resumen();
+}
+
+const kpi = (label, value, neg) => h('div', { class: 'kpi' + (neg ? ' neg' : '') }, h('small', {}, label), h('b', {}, value));
+
+/* =====================================================================
+   Pantalla: Panel (solo administrador)
+   ===================================================================== */
+async function screenPanel(root) {
+  const mes = h('input', { type: 'month', value: todayStr().slice(0, 7), onchange: () => draw() });
+  const out = h('div');
+  root.append(h('div', { class: 'row between' }, h('h2', {}, 'Panel'), h('label', { class: 'inline' }, 'Mes ', mes)), out);
+  const CATS = [['habitacion', 'Habitaciones'], ['bebida', 'Bebidas'], ['comida', 'Comida'], ['articulo', 'Artículos'], ['servicio', 'Servicios']];
+
+  async function draw() {
+    await run(async () => {
+      const [d0, d1] = monthRange(mes.value);
+      const y = mes.value.slice(0, 4);
+      const [vm, cj, va] = await Promise.all([
+        rpc('dashboard_ventas', { p_desde: d0, p_hasta: d1 }),
+        rpc('resumen_caja', { p_desde: d0, p_hasta: d1 }),
+        rpc('dashboard_ventas', { p_desde: `${y}-01-01`, p_hasta: `${y}-12-31` })]);
+      const group = (rows, keyOf) => {
+        const m = new Map();
+        rows.forEach(r => { const k = keyOf(r); if (!m.has(k)) m.set(k, { k, total: 0 }); const g = m.get(k); g[r.categoria] = (g[r.categoria] || 0) + Number(r.total); g.total += Number(r.total); });
+        return [...m.values()].sort((a, b) => a.k < b.k ? -1 : 1);
+      };
+      const days = group(vm, r => r.fecha), months = group(va, r => r.fecha.slice(0, 7));
+      const tot = sum(vm, r => r.total), hab = sum(vm.filter(r => r.categoria === 'habitacion'), r => r.total);
+      const ing = sum(cj, r => r.ingresos), gas = sum(cj, r => r.gastos);
+      const ini = (cj.find(r => r.inicial != null) || {}).inicial || 0;
+      const hoy = vm.filter(r => r.fecha === todayStr());
+      const maxD = Math.max(1, ...days.map(d => d.total)), maxM = Math.max(1, ...months.map(d => d.total));
+      const cols = (lbl, fmtK, max) => [{ label: lbl, cell: r => fmtK(r.k) }]
+        .concat(CATS.map(([c, l]) => ({ label: l, num: true, cell: r => r[c] ? money(r[c]) : '—' })))
+        .concat([{ label: 'Total', num: true, cell: r => h('span', { class: 'barcell' }, h('span', { class: 'bar', style: `width:${Math.round(80 * r.total / max)}px` }), h('b', {}, money(r.total))) }]);
+      fill(out, 
+        h('div', { class: 'kpis' },
+          kpi('Ventas del mes', money(tot)), kpi('Habitaciones', money(hab)), kpi('Bar, comida, artículos y servicios', money(tot - hab)),
+          kpi('Ventas de hoy', mes.value === todayStr().slice(0, 7) ? money(sum(hoy, r => r.total)) : '—'),
+          kpi('Cobrado en el mes', money(ing)), kpi('Gastos de caja', money(gas)), kpi('Saldo inicial del mes', money(ini)), kpi('Saldo de caja', money(Number(ini) + ing - gas), Number(ini) + ing - gas < 0)),
+        h('h3', { class: 'sec' }, 'Ventas por día'),
+        tableEl(cols('Día', k => dfmt(k), maxD), days, { empty: 'Sin ventas en el mes.' }),
+        h('h3', { class: 'sec' }, `Ventas por mes — ${y}`),
+        tableEl(cols('Mes', k => k.slice(5) + '/' + k.slice(0, 4), maxM), months, { empty: 'Sin ventas en el año.' }),
+        h('p', { class: 'mut' }, 'El alojamiento se cuenta el día de la salida (check-out) de las reservas finalizadas. Las ventas cargadas a la cuenta cuentan como ventas aunque todavía no estén cobradas; la caja solo suma lo efectivamente cobrado.'));
+    });
+  }
+  await draw();
+}
+
+/* =====================================================================
+   Pantalla: Usuarios (solo administrador)
+   ===================================================================== */
+async function screenUsuarios(root) {
+  root.append(h('h2', {}, 'Usuarios'),
+    h('p', { class: 'mut' }, 'Los usuarios nuevos se crean en Supabase (Authentication → Users → Add user) y aparecen acá como operadores. Desde acá podés cambiarles el rol o desactivarlos.'));
+  const box = h('div'); root.append(box);
+  async function load() {
+    const rows = await sel('profiles', q => q.order('created_at'));
+    fill(box, tableEl([
+      { label: 'Nombre', cell: p => h('b', {}, p.nombre || '—') }, { label: 'Correo', cell: p => p.email },
+      { label: 'Rol', cell: p => h('select', { class: 'sel-sm', value: p.rol, disabled: p.id === S.profile.id, onchange: e => upd(p, { rol: e.target.value }) },
+          h('option', { value: 'admin' }, 'Administrador'), h('option', { value: 'operador' }, 'Operador')) },
+      { label: 'Activo', cell: p => h('input', { type: 'checkbox', checked: p.activo, disabled: p.id === S.profile.id, onchange: e => upd(p, { activo: e.target.checked }) }) }], rows));
+  }
+  const upd = (p, v) => run(async () => { await mut(sb.from('profiles').update(v).eq('id', p.id)); toast('Guardado'); load(); });
+  await load();
+}
+
+/* =====================================================================
+   Navegación, login y arranque
+   ===================================================================== */
+const SCREENS = {
+  panel: { label: 'Panel', admin: true, fn: screenPanel },
+  reservas: { label: 'Reservas', fn: screenReservas },
+  ventas: { label: 'Ventas', fn: screenVentas },
+  cuentas: { label: 'Cuentas', fn: screenCuentas },
+  facturas: { label: 'Facturas', fn: screenFacturas },
+  caja: { label: 'Caja', fn: screenCaja },
+  clientes: { label: 'Clientes', fn: screenClientes },
+  habitaciones: { label: 'Habitaciones', fn: screenHabitaciones },
+  productos: { label: 'Productos', fn: screenProductos },
+  usuarios: { label: 'Usuarios', admin: true, fn: screenUsuarios }
+};
+
+let mainEl = null;
+function route() {
+  if (!mainEl) return;
+  let id = location.hash.replace(/^#\//, '');
+  const s = SCREENS[id];
+  if (!s || (s.admin && !isAdmin())) { id = isAdmin() ? 'panel' : 'reservas'; if (location.hash !== '#/' + id) { location.hash = '#/' + id; return; } }
+  document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.id === id));
+  const tok = ++routeTok;
+  const holder = h('div', {}, h('p', { class: 'mut' }, 'Cargando…'));
+  mainEl.replaceChildren(holder);
+  const page = h('div');
+  run(async () => {
+    await SCREENS[id].fn(page);
+    if (tok === routeTok) holder.replaceWith(page);
+  });
+}
+
+function showApp() {
+  document.title = CFG.NOMBRE;
+  const nav = h('nav', { class: 'nav' }, Object.entries(SCREENS).filter(([, s]) => !s.admin || isAdmin())
+    .map(([id, s]) => h('a', { href: '#/' + id, 'data-id': id }, s.label)));
+  mainEl = h('main');
+  $('#app').replaceChildren(h('div', { class: 'shell' },
+    h('header', { class: 'top' }, h('span', { class: 'brand' }, logoImg(), h('b', {}, CFG.NOMBRE)),
+      h('span', { class: 'row' }, h('span', { class: 'mut' }, `${S.profile.nombre || S.profile.email} · ${isAdmin() ? 'Administrador' : 'Operador'}`),
+        h('button', { class: 'btn sm', onclick: async () => { await sb.auth.signOut(); S.profile = null; showLogin(); } }, 'Salir'))),
+    nav, mainEl));
+  route();
+}
+
+function showLogin(msg) {
+  mainEl = null;
+  document.title = CFG.NOMBRE;
+  const email = h('input', { type: 'email', required: true, autocomplete: 'username' });
+  const pass = h('input', { type: 'password', required: true, autocomplete: 'current-password' });
+  const err = h('p', { class: 'low', role: 'alert' }, msg || '');
+  const go = h('button', { class: 'btn primary', type: 'submit' }, 'Ingresar');
+  const form = h('form', { class: 'form', onsubmit: async ev => {
+    ev.preventDefault(); go.disabled = true; err.textContent = '';
+    const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
+    if (error) { err.textContent = error.message === 'Invalid login credentials' ? 'Correo o contraseña incorrectos.' : error.message; go.disabled = false; return; }
+    boot();
+  } },
+    h('label', { class: 'fld' }, h('span', {}, 'Correo'), email), h('label', { class: 'fld' }, h('span', {}, 'Contraseña'), pass), err, go);
+  $('#app').replaceChildren(h('div', { class: 'login' }, h('div', { class: 'brand login-brand' }, logoImg('big'), h('h2', {}, CFG.NOMBRE)), form));
+}
+
+async function boot() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return showLogin();
+    const { data: prof, error } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+    if (error) throw error;
+    if (!prof || !prof.activo) { await sb.auth.signOut(); return showLogin('Tu usuario está desactivado. Hablá con el administrador.'); }
+    S.profile = prof;
+    await loadMaster();
+    showApp();
+  } catch (e) {
+    console.error(e);
+    showLogin('No se pudo iniciar: ' + errMsg(e));
+  }
+}
+
+function start() {
+  if (!CFG.SUPABASE_URL || CFG.SUPABASE_URL.includes('TU-PROYECTO') || !CFG.SUPABASE_ANON_KEY || CFG.SUPABASE_ANON_KEY === 'TU-ANON-KEY') {
+    $('#app').replaceChildren(h('div', { class: 'login' }, h('h2', {}, 'Falta configurar'),
+      h('p', {}, 'Abrí el archivo ', h('b', {}, 'index.html'), ' (bloque APP_CONFIG al principio) y completá SUPABASE_URL y SUPABASE_ANON_KEY (Supabase → Project Settings → API).')));
+    return;
+  }
+  if (!window.supabase) { $('#app').replaceChildren(h('div', { class: 'login' }, h('p', {}, 'No se pudo cargar la librería de Supabase. Revisá la conexión a internet.'))); return; }
+  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+  window.addEventListener('hashchange', route);
+  boot();
+}
+
+window.__app = { start };
+if (!window.__NO_AUTOSTART) start();
+})();
+
+</script>
+</body>
+</html>
